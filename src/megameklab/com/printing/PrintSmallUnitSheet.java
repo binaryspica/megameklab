@@ -15,6 +15,7 @@
 package megameklab.com.printing;
 
 import megamek.common.*;
+import megameklab.com.printing.reference.*;
 import megameklab.com.util.ImageHelper;
 import org.w3c.dom.Element;
 import org.w3c.dom.svg.SVGRectElement;
@@ -73,13 +74,15 @@ public class PrintSmallUnitSheet extends PrintRecordSheet {
             Element g = getSVGDocument().getElementById("unit_" + count);
             if (g != null) {
                 PrintEntity sheet = getBlockFor(entity, count);
-                sheet.createDocument(startPage, pageFormat);
+                sheet.createDocument(startPage, pageFormat, false);
                 g.appendChild(getSVGDocument().importNode(sheet.getSVGDocument().getDocumentElement(), true));
-                getSVGDocument().getDocumentElement().appendChild(g);
             }
             count++;
         }
         drawFluffImage();
+        if (includeReferenceCharts()) {
+            addReferenceCharts(pageFormat);
+        }
     }
 
     private PrintEntity getBlockFor(Entity entity, int index) {
@@ -139,5 +142,46 @@ public class PrintSmallUnitSheet extends PrintRecordSheet {
                 hideElement(DEFAULT_FLUFF_IMAGE, true);
             }
         }
+    }
+
+    @Override
+    protected boolean includeReferenceCharts() {
+        return options.showReferenceCharts();
+    }
+
+    @Override
+    protected List<ReferenceTable> getRightSideReferenceTables() {
+        List<ReferenceTable> list = new ArrayList<>();
+        list.add(new GroundToHitMods(this, entities.get(0)));
+        list.add(new MovementCost(this, entities));
+        if (entities.get(0) instanceof Protomech) {
+            list.add(new ProtomekSpecialHitLocation(this));
+        } else if (entities.get(0).isConventionalInfantry()) {
+            list.add(new AntiMekAttackTable(this));
+            list.add(new SwarmAttackHitLocation(this));
+        }
+        ClusterHitsTable table = new ClusterHitsTable(this, entities);
+        if (table.required() && table.columnCount() <= 10) {
+            list.add(table);
+        }
+        return list;
+    }
+
+    @Override
+    protected void addReferenceCharts(PageFormat pageFormat) {
+        super.addReferenceCharts(pageFormat);
+        ClusterHitsTable clusterTable = new ClusterHitsTable(this, entities);
+        if (clusterTable.columnCount() > 10) {
+            printBottomTable(clusterTable, pageFormat);
+        } else {
+            printBottomTable(new GroundMovementRecord(this, false,
+                            entities.get(0) instanceof Protomech), pageFormat);
+        }
+    }
+
+    private void printBottomTable(ReferenceTableBase table, PageFormat pageFormat) {
+        getSVGDocument().getDocumentElement().appendChild(table.createTable(pageFormat.getImageableX(),
+                pageFormat.getImageableY() + pageFormat.getImageableHeight() * TABLE_RATIO + 3.0,
+                pageFormat.getImageableWidth() * TABLE_RATIO, pageFormat.getImageableHeight() * 0.2 - 3.0));
     }
 }

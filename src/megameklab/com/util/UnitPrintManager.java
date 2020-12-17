@@ -178,7 +178,7 @@ public class UnitPrintManager {
             } else if ((unit instanceof Tank) && ((unit.getMovementMode() == EntityMovementMode.NAVAL) || (unit.getMovementMode() == EntityMovementMode.SUBMARINE) || (unit.getMovementMode() == EntityMovementMode.HYDROFOIL))) {
                 sheets.add(new PrintTank((Tank) unit, pageCount++, options));
             } else if (unit instanceof Tank) {
-                if (singlePrint) {
+                if (singlePrint || options.showReferenceCharts()) {
                     sheets.add(new PrintCompositeTankSheet((Tank) unit, null, pageCount++, options));
                 } else if (null != tank1) {
                     sheets.add(new PrintCompositeTankSheet(tank1, (Tank) unit, pageCount++, options));
@@ -196,7 +196,7 @@ public class UnitPrintManager {
                     pageCount += pds.getPageCount();
                     sheets.add(pds);
                 } else {
-                    sheets.add(new PrintAero((Aero) unit, pageCount, options));
+                    sheets.add(new PrintAero((Aero) unit, pageCount++, options));
                 }
             } else if (unit instanceof BattleArmor) {
                 baList.add((BattleArmor) unit);
@@ -208,7 +208,7 @@ public class UnitPrintManager {
                 }
             } else if (unit instanceof Infantry) {
                 infList.add((Infantry) unit);
-                if (singlePrint || infList.size() > 3) {
+                if (singlePrint || infList.size() > (options.showReferenceCharts() ? 2 : 3)) {
                     PrintRecordSheet prs = new PrintSmallUnitSheet(infList, pageCount, options);
                     pageCount += prs.getPageCount();
                     sheets.add(prs);
@@ -216,7 +216,7 @@ public class UnitPrintManager {
                 }
             } else if (unit instanceof Protomech) {
                 protoList.add((Protomech) unit);
-                if (singlePrint || protoList.size() > 3) {
+                if (singlePrint || protoList.size() > 4) {
                     PrintRecordSheet prs = new PrintSmallUnitSheet(protoList, pageCount, options);
                     pageCount += prs.getPageCount();
                     sheets.add(prs);
@@ -280,7 +280,7 @@ public class UnitPrintManager {
         HashPrintRequestAttributeSet aset = new HashPrintRequestAttributeSet();
         aset.add(options.getPaperSize().sizeName);
         aset.add(options.getPaperSize().printableArea);
-        aset.add(DialogTypeSelection.NATIVE);
+        aset.add(DialogTypeSelection.COMMON);
         PrinterJob masterPrintJob = PrinterJob.getPrinterJob();
         if (!masterPrintJob.printDialog(aset)) {
             return;

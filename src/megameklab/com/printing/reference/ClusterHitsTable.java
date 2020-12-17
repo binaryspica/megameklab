@@ -14,7 +14,9 @@
 package megameklab.com.printing.reference;
 
 import megamek.common.*;
+import megamek.common.weapons.missiles.MissileWeapon;
 import megameklab.com.printing.PrintEntity;
+import megameklab.com.printing.PrintRecordSheet;
 
 import java.util.*;
 
@@ -27,8 +29,24 @@ public class ClusterHitsTable extends ReferenceTable {
     private boolean hasHAG;
 
     public ClusterHitsTable(PrintEntity sheet) {
+        this(sheet, sheet.getEntity());
+    }
+
+    public ClusterHitsTable(PrintRecordSheet sheet, Entity entity) {
         super(sheet);
-        calculateClusterSizes(sheet.getEntity());
+        calculateClusterSizes(entity);
+        addTable(entity);
+    }
+
+    public ClusterHitsTable(PrintRecordSheet sheet, List<Entity> entities) {
+        super(sheet);
+        for (Entity en : entities) {
+            calculateClusterSizes(en);
+        }
+        addTable(entities.get(0));
+    }
+
+    private void addTable(Entity entity) {
         if (!clusterSizes.isEmpty()) {
             List<Double> offsets = new ArrayList<>();
             double spacing = 0.9 / (clusterSizes.size() + 1);
@@ -43,11 +61,25 @@ public class ClusterHitsTable extends ReferenceTable {
             }
             setHeaders(headers);
             addRows();
-            addNotes(sheet.getEntity());
+            addNotes(entity);
         }
     }
 
     private void calculateClusterSizes(Entity entity) {
+        if (entity instanceof Infantry) {
+            int size = ((Infantry) entity).getShootingStrength();
+            for (int i = 2; i <= size; i++) {
+                clusterSizes.add(i);
+            }
+            if (entity instanceof BattleArmor) {
+                for (Mounted mounted : entity.getIndividualWeaponList()) {
+                    if (mounted.getType() instanceof MissileWeapon) {
+                        clusterSizes.add(Math.min(40, size * ((MissileWeapon) mounted.getType()).getRackSize()));
+                    }
+                }
+            }
+            return;
+        }
         for (Mounted mounted : entity.getIndividualWeaponList()) {
             if (mounted.getType() instanceof WeaponType) {
                 final WeaponType weapon = (WeaponType) mounted.getType();
@@ -91,11 +123,6 @@ public class ClusterHitsTable extends ReferenceTable {
                 }
             }
         }
-        if (entity instanceof BattleArmor) {
-            for (int i = 2; i <= ((BattleArmor) entity).getTroopers(); i++) {
-                clusterSizes.add(i);
-            }
-        }
     }
 
     private void addRows() {
@@ -130,5 +157,9 @@ public class ClusterHitsTable extends ReferenceTable {
      */
     public boolean required() {
         return !clusterSizes.isEmpty();
+    }
+
+    public int columnCount() {
+        return clusterSizes.size();
     }
 }

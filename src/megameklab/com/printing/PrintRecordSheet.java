@@ -17,6 +17,7 @@ import megamek.common.EquipmentType;
 import megamek.common.annotations.Nullable;
 import megamek.common.logging.LogLevel;
 import megameklab.com.MegaMekLab;
+import megameklab.com.printing.reference.ReferenceTable;
 import megameklab.com.util.CConfig;
 import org.apache.avalon.framework.configuration.Configuration;
 import org.apache.avalon.framework.configuration.ConfigurationException;
@@ -283,7 +284,7 @@ public abstract class PrintRecordSheet implements Printable, IdConstants {
                 getSVGFileName(pageIndex - firstPage));
     }
 
-    void createDocument(int pageIndex, PageFormat pageFormat) {
+    void createDocument(int pageIndex, PageFormat pageFormat, boolean addMargin) {
         svgDocument = loadTemplate(pageIndex, pageFormat);
         if (null != svgDocument) {
             subFonts((SVGDocument) svgDocument);
@@ -292,7 +293,7 @@ public abstract class PrintRecordSheet implements Printable, IdConstants {
             svgGenerator = new SVGGraphics2D(context, false);
             double ratio = Math.min(pageFormat.getImageableWidth() / (options.getPaperSize().pxWidth - 36),
                     pageFormat.getPaper().getImageableHeight() / (options.getPaperSize().pxHeight - 36));
-            if (includeReferenceCharts()) {
+            if ((pageIndex == firstPage) && includeReferenceCharts()) {
                 ratio *= TABLE_RATIO;
             }
             Element svgRoot = svgDocument.getDocumentElement();
@@ -300,9 +301,15 @@ public abstract class PrintRecordSheet implements Printable, IdConstants {
             svgRoot.setAttributeNS(null, SVGConstants.SVG_HEIGHT_ATTRIBUTE, String.valueOf(pageFormat.getHeight()));
             Element g = svgDocument.getElementById(RS_TEMPLATE);
             if (g != null) {
-                g.setAttributeNS(null, SVGConstants.SVG_TRANSFORM_ATTRIBUTE,
-                        String.format("%s(%f 0 0 %f %f %f)", SVGConstants.SVG_MATRIX_VALUE,
-                                ratio, ratio, pageFormat.getImageableX(), pageFormat.getImageableY()));
+                if (addMargin) {
+                    g.setAttributeNS(null, SVGConstants.SVG_TRANSFORM_ATTRIBUTE,
+                            String.format("%s(%f 0 0 %f %f %f)", SVGConstants.SVG_MATRIX_VALUE,
+                                    ratio, ratio, pageFormat.getImageableX(), pageFormat.getImageableY()));
+                } else {
+                    g.setAttributeNS(null, SVGConstants.SVG_TRANSFORM_ATTRIBUTE,
+                            String.format("%s(%f %f)", SVGConstants.SVG_SCALE_ATTRIBUTE,
+                                    ratio, ratio));
+                }
             }
             processImage(pageIndex - firstPage, pageFormat);
         }
@@ -314,7 +321,7 @@ public abstract class PrintRecordSheet implements Printable, IdConstants {
         
         Graphics2D g2d = (Graphics2D) graphics;
         if (null != g2d) {
-            createDocument(pageIndex, pageFormat);
+            createDocument(pageIndex, pageFormat, true);
             GraphicsNode node = build();
             node.paint(g2d);
             /* Testing code that outputs the generated svg
@@ -335,7 +342,7 @@ public abstract class PrintRecordSheet implements Printable, IdConstants {
     }
 
     public InputStream exportPDF(int pageNumber, PageFormat pageFormat) throws TranscoderException, SAXException, IOException, ConfigurationException {
-        createDocument(pageNumber + firstPage, pageFormat);
+        createDocument(pageNumber + firstPage, pageFormat, true);
         DefaultConfigurationBuilder cfgBuilder = new DefaultConfigurationBuilder();
         Configuration cfg = cfgBuilder.build(getClass().getResourceAsStream("fop-config.xml"));
         PDFTranscoder transcoder = new PDFTranscoder();
@@ -861,5 +868,25 @@ public abstract class PrintRecordSheet implements Printable, IdConstants {
      */
     protected boolean includeReferenceCharts() {
         return false;
+    }
+
+    protected List<ReferenceTable> getRightSideReferenceTables() {
+        return Collections.emptyList();
+    }
+
+    protected void addReferenceCharts(PageFormat pageFormat) {
+        List<ReferenceTable> rightSide = getRightSideReferenceTables();
+        double lines = rightSide.stream().mapToDouble(ReferenceTable::lineCount).sum();
+
+        double ypos = pageFormat.getImageableY();
+        double margin = ReferenceTable.getMargins(this);
+        for (ReferenceTable table : rightSide) {
+            double height = (pageFormat.getImageableHeight() - margin * rightSide.size())
+                    * table.lineCount() / lines + margin;
+            getSVGDocument().getDocumentElement().appendChild(
+                    table.createTable(pageFormat.getImageableX() + pageFormat.getImageableWidth() * 0.8 + 3.0,
+                            ypos, pageFormat.getImageableWidth() * 0.2, height));
+            ypos += height;
+        }
     }
 }

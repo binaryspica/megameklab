@@ -165,8 +165,7 @@ public class PrintMech extends PrintEntity {
             if (si instanceof SVGRectElement) {
                 drawSIPips((SVGRectElement) si);
             } else {
-                MegaMekLab.getLogger().error(this,
-                        "Region siPips does not exist in template or is not a <rect>");
+                MegaMekLab.getLogger().error("Region siPips does not exist in template or is not a <rect>");
             }
         }
         
@@ -333,13 +332,11 @@ public class PrintMech extends PrintEntity {
             SAXDocumentFactory df = new SAXDocumentFactory(impl, parser);
             doc = df.createDocument(f.toURI().toASCIIString(), is);
         } catch (Exception e) {
-            MegaMekLab.getLogger().error(PrintRecordSheet.class,
-                    "Failed to open pip SVG file! Path: " + f.getName());
+            MegaMekLab.getLogger().error("Failed to open pip SVG file! Path: " + f.getName());
             return null;
         }
         if (null == doc) {
-            MegaMekLab.getLogger().error(PrintRecordSheet.class,
-                    "Failed to open pip SVG file! Path: " + f.getName());
+            MegaMekLab.getLogger().error("Failed to open pip SVG file! Path: " + f.getName());
             return null;
         }
         return doc.getElementsByTagName(SVGConstants.SVG_PATH_TAG);
@@ -736,7 +733,7 @@ public class PrintMech extends PrintEntity {
                 critName.append(shots);
             } else if ((cs.getMount2() != null)
                     && (m.getType() instanceof MiscType) && (m.getType().hasFlag(MiscType.F_HEAT_SINK))
-                    && (m.getType() == cs.getMount2().getType())) {
+                    && (m.getType().equals(cs.getMount2().getType()))) {
                 critName.insert(0, "2 ").append("s");
             } else if ((cs.getMount2() != null)
                     && (m.getType() instanceof MiscType) && (m.getType().hasFlag(MiscType.F_COMPACT_HEAT_SINK))
@@ -772,14 +769,6 @@ public class PrintMech extends PrintEntity {
             buffer.setLength(buffer.length() - 5);
             buffer.trimToSize();
         }
-        
-        String submunitionName = ammo.getSubMunitionName().replace("(Clan) ", "");
-        int index = buffer.indexOf(submunitionName);
-        if (index >= 0) {
-            buffer.delete(index, index + submunitionName.length());
-            buffer.trimToSize();
-        }
-
         // Trim trailing spaces.
         while (buffer.charAt(buffer.length() - 1) == ' ') {
             buffer.setLength(buffer.length() - 1);
@@ -796,7 +785,7 @@ public class PrintMech extends PrintEntity {
     protected List<ReferenceTable> getRightSideReferenceTables() {
         List<ReferenceTable> list = new ArrayList<>();
         list.add(new MekHitLocation(this));
-        list.add(new MekVeeToHitMods(this));
+        list.add(new GroundToHitMods(this));
         list.add(new PhysicalAttacks(this));
         list.add(new PunchLocation(this));
         list.add(new KickLocation(this));
@@ -811,7 +800,7 @@ public class PrintMech extends PrintEntity {
     @Override
     protected void addReferenceCharts(PageFormat pageFormat) {
         super.addReferenceCharts(pageFormat);
-        GroundMovementRecord table = new GroundMovementRecord(this);
+        GroundMovementRecord table = new GroundMovementRecord(this, true, true);
         getSVGDocument().getDocumentElement().appendChild(table.createTable(pageFormat.getImageableX(),
                 pageFormat.getImageableY() + pageFormat.getImageableHeight() * TABLE_RATIO + 3.0,
                 pageFormat.getImageableWidth() * TABLE_RATIO, pageFormat.getImageableHeight() * 0.2 - 3.0));

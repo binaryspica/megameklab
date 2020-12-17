@@ -14,12 +14,13 @@
 package megameklab.com.printing;
 
 import megamek.common.*;
+import megameklab.com.printing.reference.*;
 import megameklab.com.util.ImageHelper;
 import org.w3c.dom.Element;
 import org.w3c.dom.svg.SVGRectElement;
 
+import java.awt.print.PageFormat;
 import java.io.File;
-import java.text.DecimalFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -216,5 +217,31 @@ public class PrintTank extends PrintEntity {
             }
             hideElement(getSVGDocument().getElementById(NOTES));
         }
+    }
+
+    @Override
+    protected boolean includeReferenceCharts() {
+        return options.showReferenceCharts();
+    }
+
+    @Override
+    protected List<ReferenceTable> getRightSideReferenceTables() {
+        List<ReferenceTable> list = new ArrayList<>();
+        list.add(new GroundToHitMods(this));
+        list.add(new MovementCost(this));
+        ClusterHitsTable table = new ClusterHitsTable(this);
+        if (table.required()) {
+            list.add(table);
+        }
+        return list;
+    }
+
+    @Override
+    protected void addReferenceCharts(PageFormat pageFormat) {
+        super.addReferenceCharts(pageFormat);
+        GroundMovementRecord table = new GroundMovementRecord(this, false, true);
+        getSVGDocument().getDocumentElement().appendChild(table.createTable(pageFormat.getImageableX(),
+                pageFormat.getImageableY() + pageFormat.getImageableHeight() * TABLE_RATIO + 3.0,
+                pageFormat.getImageableWidth() * TABLE_RATIO, pageFormat.getImageableHeight() * 0.2 - 3.0));
     }
 }
